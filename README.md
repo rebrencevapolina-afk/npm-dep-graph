@@ -25,3 +25,25 @@ CLI-приложение на Python для построения и визуал
 - **pytest** — тестирование
 
 ## Структура проекта
+npm-dep-graph/
+├── src/ # Исходный код
+│ └── init.py
+├── tests/ # Тесты
+│ └── init.py
+├── .gitignore # Исключения для Git
+├── README.md # Документация
+├── requirements.txt # Зависимости Python
+└── run.bat # Скрипт запуска (Windows)
+
+
+## Установка и запуск
+
+### 1. Установить зависимости
+
+```bash
+pip install -r requirements.txt
+
+2. Запустить приложение
+
+```bash
+python src/main.py
