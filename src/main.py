@@ -1,28 +1,17 @@
-"""Точка входа приложения для визуализации графов зависимостей npm.
-
-Загружает конфигурацию из YAML, валидирует её и выводит все
-параметры в формате ключ-значение. Служит заготовкой для
-последующих этапов: сбор данных, построение графа, визуализация.
-"""
+"""Точка входа приложения для визуализации графов зависимостей npm."""
 
 import argparse
 import sys
 
 from src.config import Config, ConfigError, load_config
+from src.npm_client import NpmClientError, fetch_direct_dependencies
 
 
 CONFIG_PATH_DEFAULT = "config.yaml"
 
 
 def parse_args(argv=None) -> argparse.Namespace:
-    """Разбирает аргументы командной строки.
-
-    Args:
-        argv: список аргументов; если None — берётся sys.argv[1:].
-
-    Returns:
-        Пространство имён с аргументами CLI.
-    """
+    """Разбирает аргументы командной строки."""
     parser = argparse.ArgumentParser(
         description="Инструмент визуализации графов зависимостей npm",
     )
@@ -35,7 +24,7 @@ def parse_args(argv=None) -> argparse.Namespace:
 
 
 def print_config(config: Config) -> None:
-    """Печатает все параметры конфигурации в формате ключ-значение."""
+    """Печатает параметры конфигурации в формате ключ-значение."""
     print("=" * 40)
     print("Параметры конфигурации:")
     print("=" * 40)
@@ -46,12 +35,25 @@ def print_config(config: Config) -> None:
     print("=" * 40)
 
 
-def main(argv=None) -> int:
-    """Точка входа: разбирает аргументы, загружает конфиг, выводит его.
+def print_dependencies(dependencies: dict) -> None:
+    """Печатает список прямых зависимостей пакета.
 
-    Returns:
-        Код возврата: 0 при успехе, 1 при ошибке конфигурации.
+    Args:
+        dependencies: словарь {имя: версия}.
     """
+    print("=" * 40)
+    print(f"Прямые зависимости ({len(dependencies)}):")
+    print("=" * 40)
+    if not dependencies:
+        print("(нет прямых зависимостей)")
+        return
+    for name, version in sorted(dependencies.items()):
+        print(f"  {name} {version}")
+    print("=" * 40)
+
+
+def main(argv=None) -> int:
+    """Точка входа."""
     args = parse_args(argv)
 
     try:
@@ -61,6 +63,17 @@ def main(argv=None) -> int:
         return 1
 
     print_config(config)
+
+    try:
+        dependencies = fetch_direct_dependencies(
+            repo_url=config.repo_url,
+            package_name=config.package_name,
+        )
+    except NpmClientError as exc:
+        print(f"Ошибка получения зависимостей: {exc}", file=sys.stderr)
+        return 1
+
+    print_dependencies(dependencies)
     return 0
 
 
