@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Сгенерированные файлы
+*.svg
+*.png
+*.d2
+dist/
+build/
+*.egg-info/
+
+# Конфигурация
+config.yaml
+!config.example.yaml
