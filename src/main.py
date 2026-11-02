@@ -4,6 +4,12 @@ import argparse
 import sys
 
 from src.config import Config, ConfigError, load_config
+from src.graph_builder import (
+    GraphBuilderError,
+    build_graph,
+    load_test_repo,
+    print_graph,
+)
 from src.npm_client import NpmClientError, fetch_direct_dependencies
 
 
@@ -36,11 +42,7 @@ def print_config(config: Config) -> None:
 
 
 def print_dependencies(dependencies: dict) -> None:
-    """Печатает список прямых зависимостей пакета.
-
-    Args:
-        dependencies: словарь {имя: версия}.
-    """
+    """Печатает список прямых зависимостей пакета."""
     print("=" * 40)
     print(f"Прямые зависимости ({len(dependencies)}):")
     print("=" * 40)
@@ -50,6 +52,38 @@ def print_dependencies(dependencies: dict) -> None:
     for name, version in sorted(dependencies.items()):
         print(f"  {name} {version}")
     print("=" * 40)
+
+
+def _run_real_mode(config: Config) -> int:
+    """Режим работы с реальным npm registry (Этап 2)."""
+    try:
+        dependencies = fetch_direct_dependencies(
+            repo_url=config.repo_url,
+            package_name=config.package_name,
+        )
+    except NpmClientError as exc:
+        print(f"Ошибка получения зависимостей: {exc}", file=sys.stderr)
+        return 1
+
+    print_dependencies(dependencies)
+    return 0
+
+
+def _run_test_mode(config: Config) -> int:
+    """Режим работы с локальным файлом (Этап 3)."""
+    try:
+        repo = load_test_repo(config.repo_url)
+        graph = build_graph(
+            config.package_name,
+            repo,
+            max_depth=config.max_depth,
+        )
+    except GraphBuilderError as exc:
+        print(f"Ошибка построения графа: {exc}", file=sys.stderr)
+        return 1
+
+    print_graph(graph)
+    return 0
 
 
 def main(argv=None) -> int:
@@ -64,17 +98,9 @@ def main(argv=None) -> int:
 
     print_config(config)
 
-    try:
-        dependencies = fetch_direct_dependencies(
-            repo_url=config.repo_url,
-            package_name=config.package_name,
-        )
-    except NpmClientError as exc:
-        print(f"Ошибка получения зависимостей: {exc}", file=sys.stderr)
-        return 1
-
-    print_dependencies(dependencies)
-    return 0
+    if config.test_mode:
+        return _run_test_mode(config)
+    return _run_real_mode(config)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,10 @@
+A:
+  dependencies: [B, C]
+B:
+  dependencies: [D]
+C:
+  dependencies: [D, E]
+D:
+  dependencies: [A]
+E:
+  dependencies: []

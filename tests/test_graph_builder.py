@@ -1,0 +1,67 @@
+"""Тесты для модуля построения графа зависимостей."""
+
+import os
+import tempfile
+
+import pytest
+
+from src.graph_builder import (
+    GraphBuilderError,
+    build_graph,
+    load_test_repo,
+)
+
+
+def _write_yaml(content: str) -> str:
+    """Создаёт временный YAML-файл и возвращает путь."""
+    fd, path = tempfile.mkstemp(suffix=".yaml")
+    with os.fdopen(fd, "w", encoding="utf-8") as file:
+        file.write(content)
+    return path
+
+
+def test_load_test_repo_success():
+    """Корректный YAML загружается без ошибок."""
+    content = "A:\n  dependencies: [B, C]\nB:\n  dependencies: []\n"
+    path = _write_yaml(content)
+    try:
+        repo = load_test_repo(path)
+        assert repo == {"A": ["B", "C"], "B": []}
+    finally:
+        os.unlink(path)
+
+
+def test_load_test_repo_missing_file():
+    """Отсутствующий файл вызывает ошибку."""
+    with pytest.raises(GraphBuilderError, match="не найден"):
+        load_test_repo("/nonexistent/file.yaml")
+
+
+def test_build_graph_simple():
+    """Простой граф без циклов."""
+    repo = {"A": ["B"], "B": ["C"], "C": []}
+    graph = build_graph("A", repo, max_depth=5)
+    assert set(graph.keys()) == {"A", "B", "C"}
+
+
+def test_build_graph_depth_limit():
+    """Глубина ограничивает обход."""
+    repo = {"A": ["B"], "B": ["C"], "C": ["D"], "D": []}
+    graph = build_graph("A", repo, max_depth=2)
+    assert set(graph.keys()) == {"A", "B", "C"}
+    assert "D" not in graph
+
+
+def test_build_graph_cycle():
+    """Циклическая зависимость не зацикливает обход."""
+    repo = {"A": ["B"], "B": ["C"], "C": ["A"]}
+    graph = build_graph("A", repo, max_depth=10)
+    assert len(graph) == 3
+    assert set(graph.keys()) == {"A", "B", "C"}
+
+
+def test_build_graph_root_missing():
+    """Отсутствующий корень вызывает ошибку."""
+    repo = {"A": ["B"]}
+    with pytest.raises(GraphBuilderError, match="не найден"):
+        build_graph("Z", repo, max_depth=3)
