@@ -1,4 +1,4 @@
-"""Точка входа приложения: граф и обратные зависимости (Этап 4)."""
+"""Точка входа приложения: граф, обратные зависимости, визуализация."""
 
 import argparse
 import sys
@@ -13,9 +13,16 @@ from src.graph_builder import (
     print_reverse_dependencies,
 )
 from src.npm_client import NpmClientError, fetch_direct_dependencies
+from src.visualizer import (
+    VisualizerError,
+    render_svg,
+    save_d2,
+)
 
 
 CONFIG_PATH_DEFAULT = "config.yaml"
+D2_PATH_DEFAULT = "graph.d2"
+SVG_PATH_DEFAULT = "graph.svg"
 
 
 def parse_args(argv=None) -> argparse.Namespace:
@@ -27,6 +34,11 @@ def parse_args(argv=None) -> argparse.Namespace:
         "--config",
         default=CONFIG_PATH_DEFAULT,
         help="Путь к YAML-файлу конфигурации",
+    )
+    parser.add_argument(
+        "--visualize",
+        action="store_true",
+        help="Сгенерировать D2 и SVG-изображение графа",
     )
     return parser.parse_args(argv)
 
@@ -56,8 +68,21 @@ def print_dependencies(dependencies: dict) -> None:
     print("=" * 40)
 
 
-def _run_real_mode(config: Config) -> int:
-    """Режим работы с реальным npm registry (Этап 2)."""
+def _visualize(graph: dict) -> int:
+    """Генерирует .d2 и .svg для графа. Возвращает код возврата."""
+    try:
+        save_d2(graph, D2_PATH_DEFAULT)
+        print(f"D2-файл сохранён: {D2_PATH_DEFAULT}")
+        render_svg(D2_PATH_DEFAULT, SVG_PATH_DEFAULT)
+        print(f"SVG-изображение сохранено: {SVG_PATH_DEFAULT}")
+    except VisualizerError as exc:
+        print(f"Ошибка визуализации: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
+def _run_real_mode(config: Config, visualize: bool) -> int:
+    """Режим работы с реальным npm registry."""
     try:
         dependencies = fetch_direct_dependencies(
             repo_url=config.repo_url,
@@ -71,7 +96,7 @@ def _run_real_mode(config: Config) -> int:
     return 0
 
 
-def _run_test_mode(config: Config) -> int:
+def _run_test_mode(config: Config, visualize: bool) -> int:
     """Режим работы с локальным файлом (Этапы 3 и 4)."""
     try:
         repo = load_test_repo(config.repo_url)
@@ -87,6 +112,9 @@ def _run_test_mode(config: Config) -> int:
 
     print_graph(graph)
     print_reverse_dependencies(config.package_name, reverse)
+
+    if visualize:
+        return _visualize(graph)
     return 0
 
 
@@ -103,8 +131,8 @@ def main(argv=None) -> int:
     print_config(config)
 
     if config.test_mode:
-        return _run_test_mode(config)
-    return _run_real_mode(config)
+        return _run_test_mode(config, args.visualize)
+    return _run_real_mode(config, args.visualize)
 
 
 if __name__ == "__main__":
