@@ -8,8 +8,9 @@ import pytest
 from src.graph_builder import (
     GraphBuilderError,
     build_graph,
+    find_reverse_dependencies,
     load_test_repo,
-)
+)   
 
 
 def _write_yaml(content: str) -> str:
@@ -65,3 +66,37 @@ def test_build_graph_root_missing():
     repo = {"A": ["B"]}
     with pytest.raises(GraphBuilderError, match="не найден"):
         build_graph("Z", repo, max_depth=3)
+
+def test_find_reverse_dependencies_simple():
+    """Находит пакет, который зависит от target."""
+    graph = {"A": ["B"], "B": ["C"], "C": []}
+    reverse = find_reverse_dependencies(graph, "B")
+    assert reverse == ["A"]
+
+
+def test_find_reverse_dependencies_multiple():
+    """Находит несколько пакетов, зависящих от target."""
+    graph = {"A": ["C"], "B": ["C"], "C": []}
+    reverse = find_reverse_dependencies(graph, "C")
+    assert reverse == ["A", "B"]
+
+
+def test_find_reverse_dependencies_none():
+    """Нет пакетов, зависящих от target."""
+    graph = {"A": ["B"], "B": []}
+    reverse = find_reverse_dependencies(graph, "A")
+    assert reverse == []
+
+
+def test_find_reverse_dependencies_cycle():
+    """Цикл не ломает поиск обратных зависимостей."""
+    graph = {"A": ["B"], "B": ["A"]}
+    reverse = find_reverse_dependencies(graph, "A")
+    assert reverse == ["B"]
+
+
+def test_find_reverse_dependencies_target_missing():
+    """Отсутствующий target вызывает ошибку."""
+    graph = {"A": ["B"]}
+    with pytest.raises(GraphBuilderError, match="не найден"):
+        find_reverse_dependencies(graph, "Z")

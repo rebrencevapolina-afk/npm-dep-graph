@@ -149,3 +149,49 @@ def print_graph(graph: dict) -> None:
         else:
             print(f"  {name} -> (нет зависимостей)")
     print("=" * 40)
+
+def find_reverse_dependencies(graph: dict, target: str) -> list:
+    """Находит пакеты, которые зависят от target (обратные зависимости).
+
+    Обходит все пакеты в графе и проверяет, у кого target есть в
+    списке прямых зависимостей.
+
+    Args:
+        graph: словарь {имя пакета: список его зависимостей}.
+        target: имя пакета, для которого ищем обратные зависимости.
+
+    Returns:
+        Отсортированный список имён пакетов, которые зависят от target.
+
+    Raises:
+        GraphBuilderError: если target отсутствует в graph.
+    """
+    if target not in graph:
+        raise GraphBuilderError(
+            f"Пакет не найден в графе: {target}"
+        )
+
+    reverse = []
+    for name, deps in graph.items():
+        if target in deps and name != target:
+            reverse.append(name)
+
+    return sorted(reverse)
+
+
+def print_reverse_dependencies(target: str, reverse: list) -> None:
+    """Печатает обратные зависимости пакета target.
+
+    Args:
+        target: имя пакета.
+        reverse: список пакетов, которые зависят от target.
+    """
+    print("=" * 40)
+    print(f"Обратные зависимости для '{target}':")
+    print("=" * 40)
+    if not reverse:
+        print("(нет пакетов, зависящих от данного)")
+        return
+    for name in reverse:
+        print(f"  {name}")
+    print("=" * 40)

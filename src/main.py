@@ -1,4 +1,4 @@
-"""Точка входа приложения для визуализации графов зависимостей npm."""
+"""Точка входа приложения: граф и обратные зависимости (Этап 4)."""
 
 import argparse
 import sys
@@ -7,8 +7,10 @@ from src.config import Config, ConfigError, load_config
 from src.graph_builder import (
     GraphBuilderError,
     build_graph,
+    find_reverse_dependencies,
     load_test_repo,
     print_graph,
+    print_reverse_dependencies,
 )
 from src.npm_client import NpmClientError, fetch_direct_dependencies
 
@@ -70,7 +72,7 @@ def _run_real_mode(config: Config) -> int:
 
 
 def _run_test_mode(config: Config) -> int:
-    """Режим работы с локальным файлом (Этап 3)."""
+    """Режим работы с локальным файлом (Этапы 3 и 4)."""
     try:
         repo = load_test_repo(config.repo_url)
         graph = build_graph(
@@ -78,11 +80,13 @@ def _run_test_mode(config: Config) -> int:
             repo,
             max_depth=config.max_depth,
         )
+        reverse = find_reverse_dependencies(graph, config.package_name)
     except GraphBuilderError as exc:
         print(f"Ошибка построения графа: {exc}", file=sys.stderr)
         return 1
 
     print_graph(graph)
+    print_reverse_dependencies(config.package_name, reverse)
     return 0
 
 
