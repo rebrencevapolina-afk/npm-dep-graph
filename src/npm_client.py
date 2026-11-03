@@ -7,11 +7,9 @@ fetch_direct_dependencies, которая возвращает список пр
 
 import requests
 
-
-# Константа: таймаут HTTP-запроса в секундах
+HTTP_STATUS_OK = 200
+HTTP_STATUS_NOT_FOUND = 404
 HTTP_TIMEOUT_SECONDS = 10
-
-# Константа: имя последней версии пакета по умолчанию
 LATEST_VERSION = "latest"
 
 
@@ -75,11 +73,11 @@ def fetch_direct_dependencies(repo_url: str, package_name: str,
             f"Ошибка сети при запросе к npm registry: {exc}"
         ) from exc
 
-    if response.status_code == 404:
+    if response.status_code == HTTP_STATUS_NOT_FOUND:
         raise NpmClientError(
             f"Пакет '{package_name}' версии '{version}' не найден"
         )
-    if response.status_code != 200:
+    if response.status_code != HTTP_STATUS_OK:
         raise NpmClientError(
             f"npm registry вернул код {response.status_code}"
         )

@@ -7,6 +7,7 @@ import pytest
 
 from src.config import ConfigError, load_config
 
+EXPECTED_MAX_DEPTH = 3
 
 def _write_yaml(content: str) -> str:
     """Создаёт временный YAML-файл и возвращает путь к нему."""
@@ -28,7 +29,7 @@ def test_load_valid_config():
     try:
         config = load_config(path)
         assert config.package_name == "express"
-        assert config.max_depth == 3
+        assert config.max_depth == EXPECTED_MAX_DEPTH
     finally:
         os.unlink(path)
 

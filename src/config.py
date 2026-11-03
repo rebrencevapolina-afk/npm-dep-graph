@@ -10,7 +10,6 @@ from dataclasses import dataclass
 import yaml
 
 
-# Константы для валидации
 MAX_DEPTH_MIN = 1
 MAX_DEPTH_MAX = 20
 REQUIRED_FIELDS = ("package_name", "repo_url", "test_mode", "max_depth")
