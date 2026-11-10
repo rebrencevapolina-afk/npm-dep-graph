@@ -10,13 +10,41 @@ import os
 import yaml
 
 
-# Константы для валидации
 MAX_DEPTH_MIN = 1
 MAX_DEPTH_MAX = 20
 
 
 class GraphBuilderError(Exception):
     """Ошибка при построении графа зависимостей."""
+
+
+def _validate_package(name, value) -> list:
+    """Проверяет описание одного пакета и возвращает его зависимости.
+
+    Args:
+        name: имя пакета.
+        value: значение из YAML (должно быть словарём).
+
+    Returns:
+        Список зависимостей пакета.
+
+    Raises:
+        GraphBuilderError: если данные некорректны.
+    """
+    if not isinstance(name, str):
+        raise GraphBuilderError(
+            f"Имя пакета должно быть строкой: {name}"
+        )
+    if not isinstance(value, dict):
+        raise GraphBuilderError(
+            f"Значение для пакета '{name}' должно быть словарём"
+        )
+    deps = value.get("dependencies", [])
+    if not isinstance(deps, list):
+        raise GraphBuilderError(
+            f"Поле dependencies для '{name}' должно быть списком"
+        )
+    return [str(d) for d in deps]
 
 
 def load_test_repo(path: str) -> dict:
@@ -55,21 +83,8 @@ def load_test_repo(path: str) -> dict:
             "Корневой элемент YAML должен быть словарём"
         )
 
-    result = {}
-    for name, value in data.items():
-        if not isinstance(name, str):
-            raise GraphBuilderError(f"Имя пакета должно быть строкой: {name}")
-        if not isinstance(value, dict):
-            raise GraphBuilderError(
-                f"Значение для пакета '{name}' должно быть словарём"
-            )
-        deps = value.get("dependencies", [])
-        if not isinstance(deps, list):
-            raise GraphBuilderError(
-                f"Поле dependencies для '{name}' должно быть списком"
-            )
-        result[name] = [str(d) for d in deps]
-    return result
+    return {name: _validate_package(name, value)
+            for name, value in data.items()}
 
 
 def _check_max_depth(max_depth: int) -> None:
@@ -82,12 +97,39 @@ def _check_max_depth(max_depth: int) -> None:
         )
 
 
+def _visit(package: str, depth: int, repo: dict, max_depth: int,
+           visited: set, graph: dict) -> None:
+    """Рекурсивно обходит зависимости пакета (BFS с рекурсией).
+
+    Args:
+        package: текущий пакет.
+        depth: текущая глубина.
+        repo: словарь {имя: [зависимости]}.
+        max_depth: максимальная глубина.
+        visited: множество посещённых пакетов.
+        graph: словарь для результатов.
+    """
+    if package in visited:
+        return
+    if depth > max_depth:
+        return
+
+    visited.add(package)
+    deps = repo.get(package, [])
+    graph[package] = list(deps)
+
+    if depth == max_depth:
+        return
+    for dep in deps:
+        if dep not in visited:
+            _visit(dep, depth + 1, repo, max_depth, visited, graph)
+
+
 def build_graph(root: str, repo: dict, max_depth: int) -> dict:
     """Строит граф зависимостей от пакета root до max_depth.
 
-    Используется BFS с рекурсией: для каждого соседа рекурсивно
-    вызываемся, увеличивая глубину. Циклы обрабатываются через
-    множество visited: каждый пакет обрабатывается один раз.
+    Используется BFS с рекурсией. Циклы обрабатываются через
+    множество visited.
 
     Args:
         root: имя корневого пакета.
@@ -95,8 +137,7 @@ def build_graph(root: str, repo: dict, max_depth: int) -> dict:
         max_depth: максимальная глубина анализа (>= 1).
 
     Returns:
-        Словарь {имя пакета: список его зависимостей}, содержащий
-        только пакеты, достижимые от root в пределах max_depth.
+        Словарь {имя пакета: список его зависимостей}.
 
     Raises:
         GraphBuilderError: если root отсутствует в repo или
@@ -108,25 +149,7 @@ def build_graph(root: str, repo: dict, max_depth: int) -> dict:
 
     graph = {}
     visited = set()
-
-    def _visit(package: str, depth: int) -> None:
-        """Рекурсивно обходит зависимости пакета."""
-        if package in visited:
-            return
-        if depth > max_depth:
-            return
-
-        visited.add(package)
-        deps = repo.get(package, [])
-        graph[package] = list(deps)
-
-        if depth == max_depth:
-            return
-        for dep in deps:
-            if dep not in visited:
-                _visit(dep, depth + 1)
-
-    _visit(root, 0)
+    _visit(root, 0, repo, max_depth, visited, graph)
     return graph
 
 
@@ -149,6 +172,7 @@ def print_graph(graph: dict) -> None:
         else:
             print(f"  {name} -> (нет зависимостей)")
     print("=" * 40)
+
 
 def find_reverse_dependencies(graph: dict, target: str) -> list:
     """Находит пакеты, которые зависят от target (обратные зависимости).

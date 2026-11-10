@@ -48,6 +48,28 @@ def _extract_dependencies(data: dict) -> dict:
     return dependencies
 
 
+def _check_response_status(response, package_name: str,
+                           version: str) -> None:
+    """Проверяет статус ответа npm registry.
+
+    Args:
+        response: объект ответа requests.
+        package_name: имя пакета.
+        version: версия пакета.
+
+    Raises:
+        NpmClientError: если пакет не найден или сервер вернул ошибку.
+    """
+    if response.status_code == HTTP_STATUS_NOT_FOUND:
+        raise NpmClientError(
+            f"Пакет '{package_name}' версии '{version}' не найден"
+        )
+    if response.status_code != HTTP_STATUS_OK:
+        raise NpmClientError(
+            f"npm registry вернул код {response.status_code}"
+        )
+
+
 def fetch_direct_dependencies(repo_url: str, package_name: str,
                               version: str = LATEST_VERSION) -> dict:
     """Запрашивает прямые зависимости пакета из npm registry.
@@ -73,14 +95,7 @@ def fetch_direct_dependencies(repo_url: str, package_name: str,
             f"Ошибка сети при запросе к npm registry: {exc}"
         ) from exc
 
-    if response.status_code == HTTP_STATUS_NOT_FOUND:
-        raise NpmClientError(
-            f"Пакет '{package_name}' версии '{version}' не найден"
-        )
-    if response.status_code != HTTP_STATUS_OK:
-        raise NpmClientError(
-            f"npm registry вернул код {response.status_code}"
-        )
+    _check_response_status(response, package_name, version)
 
     try:
         data = response.json()

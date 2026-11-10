@@ -12,6 +12,7 @@ from src.graph_builder import (
     load_test_repo,
 )   
 
+EXPECTED_CYCLE_SIZE = 3
 
 def _write_yaml(content: str) -> str:
     """Создаёт временный YAML-файл и возвращает путь."""
@@ -57,7 +58,7 @@ def test_build_graph_cycle():
     """Циклическая зависимость не зацикливает обход."""
     repo = {"A": ["B"], "B": ["C"], "C": ["A"]}
     graph = build_graph("A", repo, max_depth=10)
-    assert len(graph) == 3
+    assert len(graph) == EXPECTED_CYCLE_SIZE
     assert set(graph.keys()) == {"A", "B", "C"}
 
 

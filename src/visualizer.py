@@ -9,10 +9,7 @@ import os
 import subprocess
 
 
-# Константа: команда D2 (может быть полный путь, если не в PATH)
 D2_COMMAND = "d2"
-
-# Константа: таймаут запуска D2 в секундах
 D2_TIMEOUT_SECONDS = 30
 
 
